@@ -1,5 +1,5 @@
-import { useRef, useEffect, useCallback, useState } from "react"
-import { BookOpen, Plus, Trash2, MessageSquare } from "lucide-react"
+import { useRef, useEffect, useCallback, useState, useMemo } from "react"
+import { BookOpen, Plus, Trash2, MessageSquare, ChevronDown, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChatMessage, StreamingMessage, useSourceFiles } from "./chat-message"
 import { ChatInput } from "./chat-input"
@@ -141,6 +141,23 @@ export function ChatPanel() {
   const project = useWikiStore((s) => s.project)
   const llmConfig = useWikiStore((s) => s.llmConfig)
   const setFileTree = useWikiStore((s) => s.setFileTree)
+  const scopeSources = useWikiStore((s) => s.scopeSources)
+  const setScopeSources = useWikiStore((s) => s.setScopeSources)
+
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([])
+  const [scopeOpen, setScopeOpen] = useState(false)
+
+  // Available sources list for scope picker — derived from file tree
+  const fileTree = useWikiStore((s) => s.fileTree)
+  const availableSources = useMemo(() => {
+    const rawDir = fileTree.find((n) => n.name === "raw" && n.is_dir)
+    const sourcesDir = rawDir?.children?.find((n) => n.name === "sources" && n.is_dir)
+    if (!sourcesDir?.children) return []
+    return sourcesDir.children
+      .filter((n) => !n.is_dir)
+      .map((n) => n.name)
+      .sort()
+  }, [fileTree])
 
   const abortRef = useRef<AbortController | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -207,7 +224,8 @@ export function ChatPanel() {
         ])
 
         // ── Phase 1: Tokenized search → top 10 ────────────────
-        const searchResults = await searchWiki(pp, text)
+        const currentScope = useWikiStore.getState().scopeSources
+        const searchResults = await searchWiki(pp, text, { scopeSources: currentScope })
         const topSearchResults = searchResults.slice(0, 10)
 
         // ── Trim index by relevance if over budget ─────────────
@@ -331,12 +349,18 @@ export function ChatPanel() {
             "---",
             "",
             `## ⚠️ MANDATORY OUTPUT LANGUAGE: ${outLang}`,
-            "",
+            ``,
             `You MUST write your entire response in **${outLang}**.`,
             `The wiki content above may be in a different language, but this is IRRELEVANT to your output language.`,
             `Ignore the language of the wiki content. Write in ${outLang} only.`,
             `Even proper nouns should use standard ${outLang} transliteration when appropriate.`,
             `DO NOT use any other language. This overrides all other instructions.`,
+            ``,
+            `## Follow-up Questions`,
+            `At the VERY END of your response (after the cited comment), suggest 3 follow-up questions the user might ask next.`,
+            `Append them as a hidden comment in this exact format (one line, questions separated by |):`,
+            `<!-- followup: Question one? | Question two? | Question three? -->`,
+            `Write the questions in ${outLang}.`,
           ].filter(Boolean).join("\n"),
         })
 
@@ -413,7 +437,17 @@ export function ChatPanel() {
             closeReasoning()
             finalizeStream(accumulated, queryRefs)
             abortRef.current = null
-            // save-worthy detection removed — user has direct "Save to Wiki" button on each message
+            // Parse follow-up questions from hidden comment
+            const followupMatch = accumulated.match(/<!--\s*followup:\s*(.+?)\s*-->/)
+            if (followupMatch) {
+              const questions = followupMatch[1]
+                .split("|")
+                .map((q) => q.trim())
+                .filter(Boolean)
+              setFollowUpQuestions(questions)
+            } else {
+              setFollowUpQuestions([])
+            }
           },
           onError: (err) => {
             finalizeStream(`Error: ${err.message}`, undefined)
@@ -509,6 +543,24 @@ export function ChatPanel() {
                   )
                 })}
                 {isStreaming && <StreamingMessage content={streamingContent} />}
+                {!isStreaming && followUpQuestions.length > 0 && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <p className="text-[10px] text-muted-foreground px-1">Suggested follow-ups:</p>
+                    {followUpQuestions.map((q, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setFollowUpQuestions([])
+                          handleSend(q)
+                        }}
+                        className="text-left rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-foreground/80 hover:bg-accent hover:text-foreground transition-colors"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div ref={bottomRef} />
               </div>
             </div>
@@ -529,6 +581,64 @@ export function ChatPanel() {
           </>
         )}
 
+        {availableSources.length > 0 && (
+          <div className="border-t px-3 pt-2 pb-1">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setScopeOpen((o) => !o)}
+                className="flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                {scopeSources.length === 0
+                  ? "All sources"
+                  : `${scopeSources.length} source${scopeSources.length > 1 ? "s" : ""} selected`}
+                <ChevronDown className={`h-3 w-3 transition-transform ${scopeOpen ? "rotate-180" : ""}`} />
+              </button>
+              {scopeOpen && (
+                <div className="absolute bottom-full mb-1 left-0 z-50 w-64 rounded-md border border-border bg-popover shadow-md">
+                  <div className="p-1.5 border-b border-border/60 flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-muted-foreground px-1">Filter by source</span>
+                    {scopeSources.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setScopeSources([])}
+                        className="text-[10px] text-muted-foreground hover:text-destructive px-1"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-1">
+                    {availableSources.map((src) => {
+                      const checked = scopeSources.includes(src)
+                      return (
+                        <label
+                          key={src}
+                          className="flex items-center gap-2 rounded px-2 py-1 text-xs cursor-pointer hover:bg-accent"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setScopeSources(
+                                checked
+                                  ? scopeSources.filter((s) => s !== src)
+                                  : [...scopeSources, src],
+                              )
+                            }}
+                            className="h-3 w-3 accent-primary"
+                          />
+                          <span className="truncate text-foreground/80">{src}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         <ChatInput
           onSend={handleSend}
           onStop={handleStop}

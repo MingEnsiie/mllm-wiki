@@ -7,20 +7,29 @@ import { getLanguagePromptName } from "./language-metadata"
  *
  * If user has explicitly set an outputLanguage, use it.
  * Otherwise (auto), fall back to detecting the language from the given text.
+ *
+ * IMPORTANT: The fallbackText should be the USER's query or existing wiki
+ * content — NOT the source document being ingested. Detecting from source
+ * content causes the entire wiki to be written in the source document's
+ * language (e.g. an Indonesian paper → Indonesian wiki pages).
  */
-export function getOutputLanguage(fallbackText: string = ""): string {
-  const configured = useWikiStore.getState().outputLanguage
+export function getOutputLanguage(fallbackText: string = "", configuredOverride?: string): string {
+  const configured = configuredOverride ?? useWikiStore.getState().outputLanguage
   if (configured && configured !== "auto") {
     return configured
   }
-  return detectLanguage(fallbackText || "English")
+  // In auto mode: detect from fallback text, but treat source-document-
+  // style long text as unreliable — cap sample to 300 chars so a short
+  // user query drives the detection rather than a multi-page source body.
+  const sample = (fallbackText || "").slice(0, 300).trim()
+  return detectLanguage(sample || "English")
 }
 
 /**
  * Build a strong language directive to inject into system prompts.
  */
-export function buildLanguageDirective(fallbackText: string = ""): string {
-  const lang = getOutputLanguage(fallbackText)
+export function buildLanguageDirective(fallbackText: string = "", configuredOverride?: string): string {
+  const lang = getOutputLanguage(fallbackText, configuredOverride)
   const promptLang = getLanguagePromptName(lang)
   return [
     `## ⚠️ MANDATORY OUTPUT LANGUAGE: ${promptLang}`,

@@ -23,6 +23,7 @@ export interface SearchResult {
   snippet: string
   titleMatch: boolean
   score: number
+  pageSources?: string[]
   /**
    * Image references found inside this result's markdown. Populated
    * even when the query doesn't match the alt text — the UI splits
@@ -30,6 +31,10 @@ export interface SearchResult {
    * page" itself, so both views need the full set. May be empty.
    */
   images: ImageRef[]
+}
+
+export interface SearchOptions {
+  scopeSources?: string[]
 }
 
 const MAX_RESULTS = 20
@@ -218,6 +223,7 @@ function buildSnippet(content: string, query: string): string {
 export async function searchWiki(
   projectPath: string,
   query: string,
+  options?: SearchOptions,
 ): Promise<SearchResult[]> {
   if (!query.trim()) return []
   const pp = normalizePath(projectPath)
@@ -364,7 +370,26 @@ export async function searchWiki(
     `[Search] query="${query}" | RRF fused: ${tokenHits} token + ${vectorCount} vector → ${results.length} unique`,
   )
 
-  return results.slice(0, MAX_RESULTS)
+  // ── Scope filter ──────────────────────────────────────────────
+  // When the user has selected specific sources in the Scope control,
+  // only return pages whose frontmatter `sources` array overlaps.
+  const scope = options?.scopeSources
+  const scopeFiltered =
+    scope && scope.length > 0
+      ? results.filter((r) => {
+          const ps = r.pageSources
+          if (!ps || ps.length === 0) return false
+          return ps.some((s: string) => scope.includes(s))
+        })
+      : results
+
+  console.log(
+    scope && scope.length > 0
+      ? `[Search] scope filter [${scope.join(", ")}]: ${results.length} → ${scopeFiltered.length}`
+      : `[Search] no scope filter`,
+  )
+
+  return scopeFiltered.slice(0, MAX_RESULTS)
 }
 
 /**
@@ -490,6 +515,39 @@ function scoreFile(
     titleMatch: isTitleMatch,
     score,
     images: extractImageRefs(content),
+    pageSources: extractFrontmatterSources(content),
   }
 }
 
+/**
+ * Extract the `sources` array from YAML frontmatter.
+ * Supports both inline `sources: [a, b]` and block list syntax.
+ */
+function extractFrontmatterSources(content: string): string[] {
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/)
+  if (!fmMatch) return []
+  const fm = fmMatch[1]
+
+  // Inline array: sources: [a.pdf, b.docx]
+  const inlineMatch = fm.match(/^sources:\s*\[([^\]]*)\]/m)
+  if (inlineMatch) {
+    return inlineMatch[1]
+      .split(",")
+      .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
+      .filter(Boolean)
+  }
+
+  // Block list:
+  // sources:
+  //   - a.pdf
+  //   - b.docx
+  const blockMatch = fm.match(/^sources:\s*\n((?:\s+-\s+.+\n?)+)/m)
+  if (blockMatch) {
+    return blockMatch[1]
+      .split("\n")
+      .map((line) => line.replace(/^\s+-\s+/, "").trim().replace(/^['"]|['"]$/g, ""))
+      .filter(Boolean)
+  }
+
+  return []
+}

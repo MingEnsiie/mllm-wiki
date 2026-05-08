@@ -107,6 +107,7 @@ pub fn run() {
             commands::extract_images::extract_office_images_cmd,
             commands::extract_images::extract_and_save_pdf_images_cmd,
             commands::extract_images::extract_and_save_office_images_cmd,
+            commands::fetch::fetch_and_extract_url,
             set_proxy_env,
         ])
         .on_window_event(|window, event| {

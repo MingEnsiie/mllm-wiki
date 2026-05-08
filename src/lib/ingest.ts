@@ -661,6 +661,14 @@ async function autoIngestImpl(
     await injectImagesIntoSourceSummary(pp, fileName, savedImages)
   }
 
+  // ── Step 3.6: Extract Source Guide from written source summary page ─
+  // Read the frontmatter of the source-summary page and persist
+  // summary / key_topics / suggested_questions to a separate JSON file
+  // so the Source Guide panel can load them without parsing markdown.
+  if (!signal?.aborted) {
+    await saveSourceGuide(pp, fileName)
+  }
+
   if (writtenPaths.length > 0) {
     try {
       const tree = await listDirectory(pp)
@@ -952,12 +960,15 @@ function parseReviewBlocks(
  * Step 1 prompt: AI reads the source and produces a structured analysis.
  * This is the "discussion" step — the AI reasons about the source before writing wiki pages.
  */
-export function buildAnalysisPrompt(purpose: string, index: string, sourceContent: string = ""): string {
+export function buildAnalysisPrompt(purpose: string, index: string, _sourceContent: string = ""): string {
   return [
     "You are an expert research analyst. Read the source document and produce a structured analysis.",
     "Do not output chain-of-thought, hidden reasoning, or a thinking transcript. Reason internally and write only the concise final analysis.",
     "",
-    languageRule(sourceContent),
+    // Pass purpose (written by user in their language) as reference, NOT sourceContent.
+    // Passing sourceContent causes auto-language detection to follow the source
+    // document's language (e.g. an Indonesian paper → Indonesian wiki pages).
+    languageRule(purpose),
     "",
     "Your analysis should cover:",
     "",
@@ -1003,7 +1014,7 @@ export function buildAnalysisPrompt(purpose: string, index: string, sourceConten
 /**
  * Step 2 prompt: AI takes its own analysis and generates wiki files + review items.
  */
-export function buildGenerationPrompt(schema: string, purpose: string, index: string, sourceFileName: string, overview?: string, sourceContent: string = ""): string {
+export function buildGenerationPrompt(schema: string, purpose: string, index: string, sourceFileName: string, overview?: string, _sourceContent: string = ""): string {
   // Use original filename (without extension) as the source summary page name
   const sourceBaseName = sourceFileName.replace(/\.[^.]+$/, "")
 
@@ -1011,7 +1022,10 @@ export function buildGenerationPrompt(schema: string, purpose: string, index: st
     "You are a wiki maintainer. Based on the analysis provided, generate wiki files.",
     "Do not output chain-of-thought, hidden reasoning, or explanatory preamble. Reason internally and output only the requested FILE/REVIEW blocks.",
     "",
-    languageRule(sourceContent),
+    // Pass purpose (user-written) as language reference, NOT sourceContent.
+    // Using sourceContent causes wiki pages to be written in the source
+    // document's language regardless of user's outputLanguage setting.
+    languageRule(purpose),
     "",
     `## IMPORTANT: Source File`,
     `The original source file is: **${sourceFileName}**`,
@@ -1049,6 +1063,11 @@ export function buildGenerationPrompt(schema: string, purpose: string, index: st
     "  • related  — array of bare wiki page slugs: `related: [foo, bar-baz]`. Do NOT include",
     "               `wiki/`, `.md`, or `[[…]]` here — slugs only.",
     `  • sources  — array of source filenames; MUST include "${sourceFileName}".`,
+    "",
+    `For the source summary page (wiki/sources/${sourceBaseName}.md) ONLY, also include these three extra fields:`,
+    `  • summary              — 150-250 word factual plain-prose summary of this source (no markdown, no bullet lists)`,
+    `  • key_topics           — YAML inline array of 5-10 key topic phrases (kebab-case or short noun phrases): \`key_topics: [topic-a, topic-b]\``,
+    `  • suggested_questions  — YAML inline array of exactly 5 questions a reader might ask about this source: \`suggested_questions: ["What is X?", "How does Y work?"]\``,
     "",
     "Concrete example of a complete, parseable page (everything between the two `---` lines",
     "is the frontmatter; the heading and prose below are the body):",
@@ -1142,7 +1161,7 @@ export function buildGenerationPrompt(schema: string, purpose: string, index: st
     // drift back to their training-data language for individual pages.
     "---",
     "",
-    languageRule(sourceContent),
+    languageRule(purpose),
   ].filter(Boolean).join("\n")
 }
 
@@ -1363,6 +1382,67 @@ async function reembedSourceSummary(pp: string, fileName: string): Promise<void>
   } catch (err) {
     console.warn(
       `[ingest:caption] re-embed failed for ${sourceBaseName}:`,
+      err instanceof Error ? err.message : err,
+    )
+  }
+}
+
+/**
+ * Parse the source-summary page frontmatter and persist
+ * summary / key_topics / suggested_questions to
+ * `.llm-wiki/source-guides/<slug>.json` for the Source Guide panel.
+ */
+export async function saveSourceGuide(
+  projectPath: string,
+  fileName: string,
+): Promise<void> {
+  const sourceBaseName = fileName.replace(/\.[^.]+$/, "")
+  const sourceSummaryPath = `${projectPath}/wiki/sources/${sourceBaseName}.md`
+  try {
+    const content = await tryReadFile(sourceSummaryPath)
+    if (!content) return
+
+    // Extract YAML frontmatter block
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/)
+    if (!fmMatch) return
+    const fm = fmMatch[1]
+
+    // Parse summary (plain string value)
+    const summaryMatch = fm.match(/^summary:\s*["']?([\s\S]*?)["']?\s*$/m)
+    const summary = summaryMatch ? summaryMatch[1].trim().replace(/^["']|["']$/g, "") : ""
+
+    // Parse key_topics inline array: key_topics: [a, b, c]
+    const topicsMatch = fm.match(/^key_topics:\s*\[([^\]]*)\]/m)
+    const key_topics = topicsMatch
+      ? topicsMatch[1].split(",").map((t) => t.trim().replace(/^["']|["']$/g, "")).filter(Boolean)
+      : []
+
+    // Parse suggested_questions inline array
+    const questionsMatch = fm.match(/^suggested_questions:\s*\[([^\]]*)\]/m)
+    const suggested_questions = questionsMatch
+      ? questionsMatch[1]
+          .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
+          .map((q) => q.trim().replace(/^["']|["']$/g, ""))
+          .filter(Boolean)
+      : []
+
+    if (!summary && key_topics.length === 0 && suggested_questions.length === 0) return
+
+    const guideData = {
+      slug: sourceBaseName,
+      fileName,
+      summary,
+      key_topics,
+      suggested_questions,
+      generatedAt: new Date().toISOString(),
+    }
+
+    const guidePath = `${projectPath}/.llm-wiki/source-guides/${sourceBaseName}.json`
+    await writeFile(guidePath, JSON.stringify(guideData, null, 2))
+    console.log(`[ingest:guide] saved source guide for "${fileName}"`)
+  } catch (err) {
+    console.warn(
+      `[ingest:guide] failed to save source guide for "${fileName}":`,
       err instanceof Error ? err.message : err,
     )
   }

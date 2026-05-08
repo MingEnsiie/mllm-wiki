@@ -1,6 +1,7 @@
 import { load } from "@tauri-apps/plugin-store"
 import type { WikiProject } from "@/types/wiki"
 import type { LlmConfig, SearchApiConfig, EmbeddingConfig, MultimodalConfig, OutputLanguage, ProviderConfigs, ProxyConfig } from "@/stores/wiki-store"
+import type { TtsConfig } from "@/lib/tts-providers"
 
 const STORE_NAME = "app-state.json"
 const RECENT_PROJECTS_KEY = "recentProjects"
@@ -183,6 +184,18 @@ export async function loadOutputLanguage(projectId?: string): Promise<OutputLang
     return projectLanguages?.[projectId] ?? null
   }
   return (await store.get<OutputLanguage>(OUTPUT_LANGUAGE_KEY)) ?? null
+}
+
+const TTS_CONFIG_KEY = "ttsConfig"
+
+export async function saveTtsConfig(config: TtsConfig): Promise<void> {
+  const store = await getStore()
+  await store.set(TTS_CONFIG_KEY, config)
+}
+
+export async function loadTtsConfig(): Promise<TtsConfig | null> {
+  const store = await getStore()
+  return (await store.get<TtsConfig>(TTS_CONFIG_KEY)) ?? null
 }
 
 // ── Update-check persistence ──────────────────────────────────────────────

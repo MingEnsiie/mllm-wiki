@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
-import { Plus, FileText, RefreshCw, BookOpen, Trash2, Folder, ChevronRight, ChevronDown } from "lucide-react"
+import { Plus, FileText, RefreshCw, BookOpen, Trash2, Folder, ChevronRight, ChevronDown, Sparkles, X, Headphones } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useWikiStore } from "@/stores/wiki-store"
@@ -18,6 +18,9 @@ import {
   collectAllFilesIncludingDot,
   decideDeleteClick,
 } from "@/lib/sources-tree-delete"
+import { SourceGuidePanel } from "@/components/sources/source-guide-panel"
+import { AddSourceDialog } from "@/components/sources/add-source-dialog"
+import { AudioOverviewPanel } from "@/components/studio/audio-overview-panel"
 
 export function SourcesView() {
   const { t } = useTranslation()
@@ -30,6 +33,10 @@ export function SourcesView() {
   const [sources, setSources] = useState<FileNode[]>([])
   const [importing, setImporting] = useState(false)
   const [ingestingPath, setIngestingPath] = useState<string | null>(null)
+  const [guideFileName, setGuideFileName] = useState<string | null>(null)
+  const [showAudioPanel, setShowAudioPanel] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const scopeSources = useWikiStore((s) => s.scopeSources ?? [])
   /**
    * Path of the source-tree node currently in "click again to
    * confirm delete" state. Lifted up here (rather than living
@@ -436,21 +443,33 @@ export function SourcesView() {
     }
   }
 
+  void importing
+  void handleImport
+  void handleImportFolder
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold">{t("sources.title")}</h2>
         <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setShowAudioPanel((v) => !v)
+              setGuideFileName(null)
+            }}
+            title={t("audio.title", "Audio Overview")}
+            className={showAudioPanel ? "text-primary" : ""}
+          >
+            <Headphones className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={loadSources} title="Refresh">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button size="sm" onClick={handleImport} disabled={importing}>
+          <Button size="sm" onClick={() => setShowAddDialog(true)}>
             <Plus className="mr-1 h-4 w-4" />
-            {importing ? t("sources.importing") : t("sources.import")}
-          </Button>
-          <Button size="sm" onClick={handleImportFolder} disabled={importing}>
-            <Plus className="mr-1 h-4 w-4" />
-            {t("sources.importFolder", "Folder")}
+            {t("sources.import")}
           </Button>
         </div>
       </div>
@@ -460,16 +479,10 @@ export function SourcesView() {
           <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
             <p>{t("sources.noSources")}</p>
             <p>{t("sources.importHint")}</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleImport}>
-                <Plus className="mr-1 h-4 w-4" />
-                {t("sources.importFiles")}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleImportFolder}>
-                <Plus className="mr-1 h-4 w-4" />
-                Folder
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => setShowAddDialog(true)}>
+              <Plus className="mr-1 h-4 w-4" />
+              {t("sources.importFiles")}
+            </Button>
           </div>
         ) : (
           <div className="p-2">
@@ -479,18 +492,62 @@ export function SourcesView() {
               onIngest={handleIngest}
               onDelete={handleDelete}
               onDeleteFolder={handleDeleteFolder}
+              onGuide={(node) => setGuideFileName((prev) => prev === node.name ? null : node.name)}
               pendingDeletePath={pendingDeletePath}
               setPendingDeletePath={setPendingDeletePath}
               ingestingPath={ingestingPath}
+              guideFileName={guideFileName}
               depth={0}
             />
           </div>
         )}
       </ScrollArea>
 
+      {/* Audio Overview Panel */}
+      {showAudioPanel && (
+        <div className="border-t flex flex-col" style={{ minHeight: "320px", maxHeight: "60%" }}>
+          <AudioOverviewPanel
+            availableSources={sources.filter((n) => !n.is_dir).map((n) => n.name)}
+            scopeSources={scopeSources}
+            onClose={() => setShowAudioPanel(false)}
+          />
+        </div>
+      )}
+
+      {/* Source Guide Panel */}
+      {!showAudioPanel && guideFileName && (
+        <div className="border-t flex flex-col" style={{ minHeight: "240px", maxHeight: "45%" }}>
+          <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>{t("sourceGuide.title", "Source Guide")}</span>
+              <span className="text-muted-foreground font-normal truncate max-w-[160px]">{guideFileName}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setGuideFileName(null)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <SourceGuidePanel fileName={guideFileName} />
+          </div>
+        </div>
+      )}
+
       <div className="border-t px-4 py-2 text-xs text-muted-foreground">
         {t("sources.sourceCount", { count: countFiles(sources) })}
       </div>
+
+      {showAddDialog && (
+        <AddSourceDialog
+          onClose={() => setShowAddDialog(false)}
+          onImported={loadSources}
+        />
+      )}
     </div>
   )
 }
@@ -569,9 +626,11 @@ function SourceTree({
   onIngest,
   onDelete,
   onDeleteFolder,
+  onGuide,
   pendingDeletePath,
   setPendingDeletePath,
   ingestingPath,
+  guideFileName,
   depth,
 }: {
   nodes: FileNode[]
@@ -579,6 +638,7 @@ function SourceTree({
   onIngest: (node: FileNode) => void
   onDelete: (node: FileNode) => void
   onDeleteFolder: (node: FileNode) => void
+  onGuide: (node: FileNode) => void
   /** Path of the node currently in "click again to confirm" state.
    *  Lifted to the parent so only ONE button is armed at a time
    *  across the whole tree — clicking another delete arms that one
@@ -586,6 +646,7 @@ function SourceTree({
   pendingDeletePath: string | null
   setPendingDeletePath: (path: string | null) => void
   ingestingPath: string | null
+  guideFileName: string | null
   depth: number
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -668,9 +729,11 @@ function SourceTree({
                   onIngest={onIngest}
                   onDelete={onDelete}
                   onDeleteFolder={onDeleteFolder}
+                  onGuide={onGuide}
                   pendingDeletePath={pendingDeletePath}
                   setPendingDeletePath={setPendingDeletePath}
                   ingestingPath={ingestingPath}
+                  guideFileName={guideFileName}
                   depth={depth + 1}
                 />
               )}
@@ -700,6 +763,15 @@ function SourceTree({
               onClick={() => onIngest(node)}
             >
               <BookOpen className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-7 w-7 shrink-0 ${guideFileName === node.name ? "text-primary" : ""}`}
+              title="Source Guide"
+              onClick={() => onGuide(node)}
+            >
+              <Sparkles className="h-4 w-4" />
             </Button>
             <DeleteButton
               isPending={isPendingDelete}
@@ -762,4 +834,3 @@ function DeleteButton({
     </Button>
   )
 }
-

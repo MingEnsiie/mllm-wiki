@@ -1,5 +1,7 @@
 import { create } from "zustand"
 import type { WikiProject, FileNode } from "@/types/wiki"
+import type { TtsConfig } from "@/lib/tts-providers"
+import { DEFAULT_TTS_CONFIG } from "@/lib/tts-providers"
 
 /**
  * Wire protocol used when `provider === "custom"`. Other providers have a
@@ -209,6 +211,8 @@ interface WikiState {
   multimodalConfig: MultimodalConfig
   outputLanguage: OutputLanguage
   proxyConfig: ProxyConfig
+  ttsConfig: TtsConfig
+  scopeSources: string[]
   dataVersion: number
 
   setProject: (project: WikiProject | null) => void
@@ -226,6 +230,8 @@ interface WikiState {
   setMultimodalConfig: (config: MultimodalConfig) => void
   setOutputLanguage: (lang: OutputLanguage) => void
   setProxyConfig: (config: ProxyConfig) => void
+  setTtsConfig: (config: TtsConfig) => void
+  setScopeSources: (scopeSources: string[]) => void
   bumpDataVersion: () => void
 }
 
@@ -251,6 +257,8 @@ export const useWikiStore = create<WikiState>((set) => ({
 
   dataVersion: 0,
 
+  scopeSources: [],
+
   setProject: (project) => set({ project }),
   setFileTree: (fileTree) => set({ fileTree }),
   setSelectedFile: (selectedFile) => set({ selectedFile }),
@@ -258,6 +266,7 @@ export const useWikiStore = create<WikiState>((set) => ({
   setPendingScrollImageSrc: (pendingScrollImageSrc) => set({ pendingScrollImageSrc }),
   setChatExpanded: (chatExpanded) => set({ chatExpanded }),
   setActiveView: (activeView) => set({ activeView }),
+  setScopeSources: (scopeSources) => set({ scopeSources }),
   searchApiConfig: {
     provider: "none",
     apiKey: "",
@@ -297,6 +306,8 @@ export const useWikiStore = create<WikiState>((set) => ({
     bypassLocal: true,
   },
 
+  ttsConfig: DEFAULT_TTS_CONFIG,
+
   setLlmConfig: (llmConfig) => set({ llmConfig }),
   setProviderConfigs: (providerConfigs) => set({ providerConfigs }),
   setActivePresetId: (activePresetId) => set({ activePresetId }),
@@ -305,7 +316,9 @@ export const useWikiStore = create<WikiState>((set) => ({
   setMultimodalConfig: (multimodalConfig) => set({ multimodalConfig }),
   setOutputLanguage: (outputLanguage) => set({ outputLanguage }),
   setProxyConfig: (proxyConfig) => set({ proxyConfig }),
+  setTtsConfig: (ttsConfig) => set({ ttsConfig }),
   bumpDataVersion: () => set((state) => ({ dataVersion: state.dataVersion + 1 })),
 }))
 
 export type { WikiState, LlmConfig, SearchApiConfig, EmbeddingConfig, MultimodalConfig, OutputLanguage, ProxyConfig }
+export type { TtsConfig }

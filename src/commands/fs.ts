@@ -84,5 +84,19 @@ export async function openProject(path: string): Promise<WikiProject> {
 }
 
 export async function clipServerStatus(): Promise<string> {
-  return invoke<string>("clip_server_status")
+    return invoke<string>("clip_server_status")
+}
+
+export interface FetchedPage {
+    title: string
+    markdown: string
+    url: string
+}
+
+/**
+  * Fetch a URL via the Rust backend (bypasses CORS) and extract
+  * its text content as plain Markdown-ish text.
+  */
+export async function fetchAndExtractUrl(url: string): Promise<FetchedPage> {
+    return invoke<FetchedPage>("fetch_and_extract_url", { url })
 }

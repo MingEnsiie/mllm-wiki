@@ -46,7 +46,36 @@
     "delete": "删除资料及相关 Wiki 页面",
     "deleteConfirm": "删除「{{name}}」及其相关 Wiki 页面？\n\n此操作将：\n- 删除原始资料文件\n- 删除由该资料生成的 Wiki 页面\n- 更新 index.md",
     "sourceCount": "{{count}} 个资料",
-    "sourceCount_plural": "{{count}} 个资料"
+    "sourceCount_plural": "{{count}} 个资料",
+    "importFolder": "文件夹"
+  },
+  "addSource": {
+    "title": "添加资料",
+    "tabFile": "文件",
+    "tabUrl": "网址",
+    "tabPaste": "粘贴",
+    "fileHint": "从本地导入一个或多个文件。",
+    "selectFiles": "选择文件",
+    "selectFolder": "选择文件夹",
+    "urlLabel": "网页地址",
+    "urlHint": "将抓取该页面的文本内容，并保存为 Markdown 格式的资料文件。",
+    "fetchUrl": "抓取并导入",
+    "pasteTitle": "标题（可选）",
+    "pasteTitlePlaceholder": "我的笔记",
+    "pasteContent": "内容",
+    "pasteContentPlaceholder": "在此粘贴文本...",
+    "savePaste": "保存为资料",
+    "imported": "资料已导入，正在排队提取..."
+  },
+  "sourceGuide": {
+    "title": "资料导读",
+    "summary": "内容摘要",
+    "keyTopics": "关键主题",
+    "suggestedQuestions": "建议问题",
+    "loading": "加载导读中...",
+    "noGuide": "暂无导读",
+    "noGuideHint": "重新提取该资料后，系统将自动生成摘要、关键主题和建议问题。",
+    "generatedAt": "生成于"
   },
   "chat": {
     "placeholder": "向你的 Wiki 提问...",
@@ -56,7 +85,12 @@
     "saved": "已保存！",
     "writeToWiki": "写入 Wiki",
     "emptyHint": "提问或开始提取资料。",
-    "sources": "来源"
+    "sources": "来源",
+    "scopeAll": "全部来源",
+    "scopeSelected": "已选 {{count}} 个来源",
+    "scopeFilter": "按来源过滤",
+    "scopeClear": "清除",
+    "followUpLabel": "建议追问："
   },
   "search": {
     "title": "搜索",
@@ -112,7 +146,8 @@
       "interface": "界面",
       "maintenance": "维护",
       "changelog": "更新日志",
-      "about": "关于"
+      "about": "关于",
+      "tts": "Audio Overview"
     },
     "sections": {
       "llm": {
@@ -239,6 +274,30 @@
           "skipped": "已标记为不重复"
         }
       },
+      "tts": {
+        "title": "Audio Overview (TTS)",
+        "description": "配置 Audio Overview 的语音合成服务。选择 \"Disabled\" 则只展示脚本文本，不进行语音合成。",
+        "provider": "TTS 提供商",
+        "providerNone": "Disabled（仅展示脚本）",
+        "providerOpenai": "OpenAI TTS",
+        "providerCustom": "自定义兼容端点",
+        "apiKey": "API Key",
+        "apiKeyHint": "与 LLM 同一个 OpenAI key 即可",
+        "apiKeyHintCustom": "如端点不需要鉴权可留空",
+        "customEndpoint": "自定义端点",
+        "customEndpointHint": "OpenAI 兼容的 /v1 根地址，例如 http://localhost:8000/v1",
+        "model": "模型",
+        "modelHintOpenai": "tts-1（速度快）或 tts-1-hd（质量更高）",
+        "modelHintCustom": "按实际端点填写",
+        "voiceA": "主持人 A 音色",
+        "voiceB": "主持人 B 音色",
+        "speed": "语速",
+        "speedHint": "范围 0.25–4.0，默认 1.0。播放器里也可以实时调整。",
+        "costHeading": "费用提示",
+        "costPoint1": "每行台词调用一次 TTS API（通常每次 0.01–0.05 元）",
+        "costPoint2": "一集 Deep Dive 脚本约 30–60 行，合计约 ¥0.5–2",
+        "costPoint3": "脚本一旦生成，再次播放不重复计费（前端缓存）"
+      },
       "changelog": {
         "title": "更新日志",
         "description": "每个版本对用户可见的功能改动，最新版本在最前面。"
@@ -262,6 +321,19 @@
         "appDescription": "一个由 LLM 驱动的个人知识库。源代码："
       }
     }
+  },
+  "audio": {
+    "title": "Audio Overview",
+    "scope": "范围",
+    "scopeAll": "全部来源",
+    "scopeSelected": "已选 {{count}} 个",
+    "generate": "生成播客脚本",
+    "generating": "生成中...",
+    "cancel": "取消",
+    "noSources": "请先导入并摄入资料",
+    "emptyTitle": "还没有播客脚本",
+    "emptyHint": "选择风格后点击「生成播客脚本」，AI 将把你的资料转换为双主持人播客对白。",
+    "ttsDisabledHint": "在设置中启用 TTS 来播放音频"
   },
   "preview": {
     "selectFile": "选择文件以预览",

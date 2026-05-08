@@ -10,6 +10,7 @@ import {
   Network,
   History,
   Wrench,
+  Headphones,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { invoke } from "@tauri-apps/api/core"
@@ -30,11 +31,13 @@ import { NetworkSection } from "./sections/network-section"
 import { ChangelogSection } from "./sections/changelog-section"
 import { MaintenanceSection } from "./sections/maintenance-section"
 import { AboutSection } from "./sections/about-section"
+import { TtsSection } from "./sections/tts-section"
 
 type CategoryId =
   | "llm"
   | "embedding"
   | "multimodal"
+  | "tts"
   | "web-search"
   | "network"
   | "output"
@@ -56,6 +59,7 @@ const CATEGORIES: Category[] = [
   { id: "llm", labelKey: "settings.categories.llm", icon: Bot },
   { id: "embedding", labelKey: "settings.categories.embedding", icon: Binary },
   { id: "multimodal", labelKey: "settings.categories.multimodal", icon: ImageIcon },
+  { id: "tts", labelKey: "settings.categories.tts", icon: Headphones },
   { id: "web-search", labelKey: "settings.categories.webSearch", icon: Globe },
   { id: "network", labelKey: "settings.categories.network", icon: Network },
   { id: "output", labelKey: "settings.categories.output", icon: Languages },
@@ -71,6 +75,7 @@ function initialDraft(
   multimodal: ReturnType<typeof useWikiStore.getState>["multimodalConfig"],
   outputLanguage: ReturnType<typeof useWikiStore.getState>["outputLanguage"],
   proxy: ReturnType<typeof useWikiStore.getState>["proxyConfig"],
+  tts: ReturnType<typeof useWikiStore.getState>["ttsConfig"],
   maxHistoryMessages: number,
   uiLanguage: string,
 ): SettingsDraft {
@@ -103,6 +108,13 @@ function initialDraft(
     proxyEnabled: proxy.enabled,
     proxyUrl: proxy.url,
     proxyBypassLocal: proxy.bypassLocal,
+    ttsProvider: tts.provider,
+    ttsApiKey: tts.apiKey,
+    ttsCustomEndpoint: tts.customEndpoint,
+    ttsModel: tts.model,
+    ttsVoiceA: tts.voiceA,
+    ttsVoiceB: tts.voiceB,
+    ttsSpeed: tts.speed,
     uiLanguage,
   }
 }
@@ -120,6 +132,8 @@ export function SettingsView() {
   const project = useWikiStore((s) => s.project)
   const proxyConfig = useWikiStore((s) => s.proxyConfig)
   const setProxyConfig = useWikiStore((s) => s.setProxyConfig)
+  const ttsConfig = useWikiStore((s) => s.ttsConfig)
+  const setTtsConfig = useWikiStore((s) => s.setTtsConfig)
   const maxHistoryMessages = useChatStore((s) => s.maxHistoryMessages)
   const setMaxHistoryMessages = useChatStore((s) => s.setMaxHistoryMessages)
   // Drives the red dot next to the "About" row in the settings
@@ -141,6 +155,7 @@ export function SettingsView() {
       multimodalConfig,
       outputLanguage,
       proxyConfig,
+      ttsConfig,
       maxHistoryMessages,
       i18n.language,
     ),
@@ -162,6 +177,7 @@ export function SettingsView() {
         multimodalConfig,
         outputLanguage,
         proxyConfig,
+        ttsConfig,
         maxHistoryMessages,
         prev.uiLanguage,
       ),
@@ -172,6 +188,7 @@ export function SettingsView() {
     multimodalConfig,
     outputLanguage,
     proxyConfig,
+    ttsConfig,
     maxHistoryMessages,
   ])
 
@@ -186,6 +203,7 @@ export function SettingsView() {
       saveMultimodalConfig,
       saveOutputLanguage,
       saveProxyConfig,
+      saveTtsConfig,
     } = await import("@/lib/project-store")
 
     const newLlm = {
@@ -240,6 +258,19 @@ export function SettingsView() {
     await saveOutputLanguage(draft.outputLanguage as typeof outputLanguage, project?.id)
     setProxyConfig(newProxy)
     await saveProxyConfig(newProxy)
+
+    const newTts = {
+      provider: draft.ttsProvider,
+      apiKey: draft.ttsApiKey,
+      customEndpoint: draft.ttsCustomEndpoint,
+      model: draft.ttsModel || "tts-1",
+      voiceA: draft.ttsVoiceA,
+      voiceB: draft.ttsVoiceB,
+      speed: Math.max(0.25, Math.min(4.0, draft.ttsSpeed || 1.0)),
+    }
+    setTtsConfig(newTts)
+    await saveTtsConfig(newTts)
+
     // Apply the proxy env vars LIVE so the next outbound request
     // picks them up — no app restart needed. tauri-plugin-http
     // builds a fresh reqwest client per fetch and reqwest reads
@@ -264,6 +295,7 @@ export function SettingsView() {
     setEmbeddingConfig,
     setOutputLanguage,
     setProxyConfig,
+    setTtsConfig,
     setMaxHistoryMessages,
     outputLanguage,
     project,
@@ -280,6 +312,8 @@ export function SettingsView() {
         return <EmbeddingSection draft={draft} setDraft={setDraft} />
       case "multimodal":
         return <MultimodalSection draft={draft} setDraft={setDraft} />
+      case "tts":
+        return <TtsSection draft={draft} setDraft={setDraft} />
       case "web-search":
         return <WebSearchSection />
       case "network":
