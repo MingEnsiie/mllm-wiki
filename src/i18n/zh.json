@@ -147,7 +147,7 @@
       "maintenance": "维护",
       "changelog": "更新日志",
       "about": "关于",
-      "tts": "Audio Overview"
+      "tts": "音频概述"
     },
     "sections": {
       "llm": {
@@ -274,8 +274,8 @@
           "skipped": "已标记为不重复"
         }
       },
-      "tts": {
-        "title": "Audio Overview (TTS)",
+    "tts": {
+      "title": "音频概述 (TTS)",
         "description": "配置 Audio Overview 的语音合成服务。选择 \"Disabled\" 则只展示脚本文本，不进行语音合成。",
         "provider": "TTS 提供商",
         "providerNone": "Disabled（仅展示脚本）",
@@ -289,8 +289,9 @@
         "model": "模型",
         "modelHintOpenai": "tts-1（速度快）或 tts-1-hd（质量更高）",
         "modelHintCustom": "按实际端点填写",
-        "voiceA": "主持人 A 音色",
-        "voiceB": "主持人 B 音色",
+      "voiceA": "主持人 A 音色",
+      "voiceB": "主持人 B 音色",
+      "voiceCustomHint": "可填音色 ID，或从预设中选择",
         "speed": "语速",
         "speedHint": "范围 0.25–4.0，默认 1.0。播放器里也可以实时调整。",
         "costHeading": "费用提示",
@@ -323,7 +324,7 @@
     }
   },
   "audio": {
-    "title": "Audio Overview",
+    "title": "音频概述",
     "scope": "范围",
     "scopeAll": "全部来源",
     "scopeSelected": "已选 {{count}} 个",
@@ -333,7 +334,26 @@
     "noSources": "请先导入并摄入资料",
     "emptyTitle": "还没有播客脚本",
     "emptyHint": "选择风格后点击「生成播客脚本」，AI 将把你的资料转换为双主持人播客对白。",
-    "ttsDisabledHint": "在设置中启用 TTS 来播放音频"
+    "ttsDisabledHint": "在设置中启用 TTS 来播放音频",
+    "styleDeepDive": "深度探讨",
+    "styleDeepDiveDesc": "8-12 分钟，学术性深度对话",
+    "styleBrief": "简明概述",
+    "styleBriefDesc": "3-5 分钟，快速要点覆盖",
+    "styleDebate": "辩论式",
+    "styleDebateDesc": "6-8 分钟，正反观点碰撞",
+    "noTts": "无 TTS",
+    "synthesizing": "合成中 {{completed}}/{{total}} 段...",
+    "linesCount": "{{count}} 行",
+    "restartTitle": "从头开始",
+    "downloadTitle": "下载脚本 Markdown",
+    "refreshTitle": "刷新",
+    "scriptsCount": "{{count}} 个脚本",
+    "scriptLines": "{{count}} 行",
+    "scriptMinutes": "约 {{count}} 分钟",
+    "linesDialogue": "{{count}} 行对白",
+    "aboutMinutes": "约 {{minutes}} 分钟",
+    "errorNoSources": "请先添加并摄入资料来源",
+    "errorNoTts": "请先在设置 → Audio 中配置 TTS 提供商"
   },
   "preview": {
     "selectFile": "选择文件以预览",

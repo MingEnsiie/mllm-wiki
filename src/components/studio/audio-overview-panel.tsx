@@ -43,11 +43,7 @@ import {
 
 // ─── 子组件：风格选择器 ───────────────────────────────────────────────────────
 
-const STYLES: Array<{ value: AudioStyle; label: string; desc: string }> = [
-  { value: "deep-dive", label: "深度探讨", desc: "8-12 分钟，学术性深度对话" },
-  { value: "brief", label: "简明概述", desc: "3-5 分钟，快速要点覆盖" },
-  { value: "debate", label: "辩论式", desc: "6-8 分钟，正反观点碰撞" },
-]
+const AUDIO_STYLES: AudioStyle[] = ["deep-dive", "brief", "debate"]
 
 // ─── 子组件：对话气泡 ─────────────────────────────────────────────────────────
 
@@ -125,11 +121,11 @@ function PlayerBar({
   onDownload: () => void
   ttsEnabled: boolean
 }) {
+  const { t } = useTranslation()
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]
 
   return (
     <div className="border-t bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-3">
-      {/* 播放/暂停 */}
       {ttsEnabled ? (
         <Button
           size="icon"
@@ -149,33 +145,31 @@ function PlayerBar({
       ) : (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Volume2 className="h-4 w-4" />
-          <span>无 TTS</span>
+          <span>{t("audio.noTts")}</span>
         </div>
       )}
 
-      {/* 重播 */}
       <Button
         size="icon"
         variant="ghost"
         className="h-8 w-8"
         onClick={onRestart}
         disabled={isSynthesizing}
-        title="从头开始"
+        title={t("audio.restartTitle")}
       >
         <SkipBack className="h-4 w-4" />
       </Button>
 
-      {/* 进度 */}
       <div className="flex-1 flex flex-col gap-1">
         {isSynthesizing && synthProgress ? (
           <div className="text-xs text-muted-foreground">
-            合成中 {synthProgress.completed}/{synthProgress.total} 段...
+            {t("audio.synthesizing", { completed: synthProgress.completed, total: synthProgress.total })}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground">
             {ttsEnabled
               ? `${currentLine + 1} / ${totalLines}`
-              : `${totalLines} 行对白`}
+              : t("audio.linesDialogue", { count: totalLines })}
           </div>
         )}
         <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -190,7 +184,6 @@ function PlayerBar({
         </div>
       </div>
 
-      {/* 倍速 */}
       {ttsEnabled && (
         <div className="flex items-center gap-1">
           {speeds.map((s) => (
@@ -209,13 +202,12 @@ function PlayerBar({
         </div>
       )}
 
-      {/* 下载脚本 */}
       <Button
         size="icon"
         variant="ghost"
         className="h-8 w-8"
         onClick={onDownload}
-        title="下载脚本 Markdown"
+        title={t("audio.downloadTitle")}
       >
         <Download className="h-4 w-4" />
       </Button>
@@ -292,7 +284,7 @@ export function AudioOverviewPanel({
   async function handleGenerate() {
     if (!project || isGenerating) return
     if (effectiveSources.length === 0) {
-      setGenerateError("请先添加并摄入资料来源")
+      setGenerateError(t("audio.errorNoSources"))
       return
     }
 
@@ -302,9 +294,9 @@ export function AudioOverviewPanel({
 
     const actId = addItem({
       type: "audio",
-      title: `Audio Overview (${STYLES.find((s) => s.value === style)?.label})`,
+      title: `Audio Overview (${t(`audio.style${style.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`)})`,
       status: "running",
-      detail: "正在生成播客脚本...",
+      detail: t("audio.generating"),
       filesWritten: [],
     })
 
@@ -320,7 +312,7 @@ export function AudioOverviewPanel({
 
       updateItem(actId, {
         status: "done",
-        detail: `脚本已生成：${result.script.lines.length} 行对白`,
+        detail: t("audio.linesDialogue", { count: result.script.lines.length }),
         filesWritten: [result.mdPath],
       })
 
@@ -342,7 +334,7 @@ export function AudioOverviewPanel({
   async function handleSynthesize() {
     if (!activeScript || isSynthesizing) return
     if (ttsConfig.provider === "none") {
-      setGenerateError("请先在设置 → Audio 中配置 TTS 提供商")
+      setGenerateError(t("audio.errorNoTts"))
       return
     }
 
@@ -355,9 +347,9 @@ export function AudioOverviewPanel({
     synthAbortRef.current = new AbortController()
     const actId = addItem({
       type: "audio",
-      title: `TTS 合成: ${actScript.title}`,
+      title: `TTS: ${actScript.title}`,
       status: "running",
-      detail: "正在合成语音...",
+      detail: t("audio.generating"),
       filesWritten: [],
     })
 
@@ -373,7 +365,7 @@ export function AudioOverviewPanel({
       setCurrentLine(0)
       updateItem(actId, {
         status: "done",
-        detail: `已合成 ${result.segmentUrls.length} 段音频`,
+        detail: t("audio.linesCount", { count: result.segmentUrls.length }),
       })
       // 自动开始播放
       setTimeout(() => playSegment(0, result.segmentUrls, actScript), 100)
@@ -501,7 +493,7 @@ export function AudioOverviewPanel({
     : 0
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* 顶部标题栏 */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
@@ -522,7 +514,7 @@ export function AudioOverviewPanel({
               className="h-7 gap-1 text-xs"
               onClick={() => setShowHistory(!showHistory)}
             >
-              <span>{scripts.length} 个脚本</span>
+              <span>{t("audio.scriptsCount", { count: scripts.length })}</span>
               <ChevronDown className={`h-3 w-3 transition-transform ${showHistory ? "rotate-180" : ""}`} />
             </Button>
           )}
@@ -531,7 +523,7 @@ export function AudioOverviewPanel({
             size="icon"
             className="h-7 w-7"
             onClick={loadScripts}
-            title="刷新"
+            title={t("audio.refreshTitle")}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
@@ -564,7 +556,7 @@ export function AudioOverviewPanel({
               <div className="flex flex-col gap-0.5">
                 <span className="truncate max-w-[280px]">{s.title}</span>
                 <span className="text-[10px] text-muted-foreground">
-                  {new Date(s.createdAt).toLocaleDateString()} · {s.lines.length} 行 · 约 {Math.round(s.totalChars / 200)} 分钟
+                  {new Date(s.createdAt).toLocaleDateString()} · {t("audio.scriptLines", { count: s.lines.length })} · {t("audio.scriptMinutes", { count: Math.round(s.totalChars / 200) })}
                 </span>
               </div>
               <Button
@@ -611,18 +603,18 @@ export function AudioOverviewPanel({
 
         {/* 风格选择 */}
         <div className="flex gap-2 flex-wrap">
-          {STYLES.map((s) => (
+          {AUDIO_STYLES.map((sv) => (
             <button
-              key={s.value}
-              onClick={() => setStyle(s.value)}
+              key={sv}
+              onClick={() => setStyle(sv)}
               className={`text-xs px-2.5 py-1.5 rounded-md border transition-colors text-left ${
-                style === s.value
+                style === sv
                   ? "bg-primary/10 border-primary/40 text-primary font-medium"
                   : "border-border text-muted-foreground hover:border-primary/30"
               }`}
-              title={s.desc}
+              title={t(`audio.style${sv.split("-").map((w: string) => w[0].toUpperCase() + w.slice(1)).join("")}Desc`)}
             >
-              {s.label}
+              {t(`audio.style${sv.split("-").map((w: string) => w[0].toUpperCase() + w.slice(1)).join("")}`)}
             </button>
           ))}
         </div>
@@ -680,11 +672,11 @@ export function AudioOverviewPanel({
         <>
           {/* 脚本元信息 */}
           <div className="px-4 py-2 flex items-center gap-3 text-xs text-muted-foreground border-b bg-muted/20">
-            <span>{activeScript.lines.length} 行对白</span>
+            <span>{t("audio.linesDialogue", { count: activeScript.lines.length })}</span>
             <span>·</span>
-            <span>约 {estimatedMinutes} 分钟</span>
+            <span>{t("audio.aboutMinutes", { minutes: estimatedMinutes })}</span>
             <span>·</span>
-            <span>{STYLES.find((s) => s.value === activeScript.style)?.label}</span>
+            <span>{t(`audio.style${activeScript.style.split("-").map((w: string) => w[0].toUpperCase() + w.slice(1)).join("")}`)}</span>
             {!ttsEnabled && (
               <>
                 <span>·</span>
@@ -696,7 +688,7 @@ export function AudioOverviewPanel({
           </div>
 
           {/* 对话内容 */}
-          <ScrollArea className="flex-1" ref={scrollRef}>
+          <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
             <div className="px-4 py-3">
               {activeScript.lines.map((line, i) => (
                 <div key={i} id={`audio-line-${i}`}>

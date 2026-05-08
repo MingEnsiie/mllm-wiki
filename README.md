@@ -41,6 +41,10 @@
 - **Deep Research** — LLM-optimized search topics, multi-query web search, auto-ingest results into wiki
 - **Async Review System** — LLM flags items for human judgment, predefined actions, pre-generated search queries
 - **Chrome Web Clipper** — one-click web page capture with auto-ingest into knowledge base
+- **Source Guide** — per-source panel with LLM-generated summary, key topics, and suggested questions
+- **URL / YouTube / Paste-Text Sources** — import web pages, YouTube transcripts, or raw text alongside file imports
+- **Grounded Chat with Scope Filter** — ground queries on selected sources + AI-generated follow-up suggestions
+- **Audio Overview** — NotebookLM-style dual-host podcast script generation with TTS synthesis and built-in player
 
 ## What is this?
 
@@ -335,7 +339,44 @@ The original is platform-agnostic (abstract pattern). We handle concrete cross-p
 - **Tauri v2** — native desktop on macOS, Windows, Linux
 - **GitHub Actions CI/CD** — automated builds for macOS (ARM + Intel), Windows (.msi), Linux (.deb / .AppImage)
 
-### 18. Other Additions
+### 18. Source Guide
+
+Not in the original. Each source now has a dedicated **Source Guide panel** that provides instant orientation when you open it:
+
+- **LLM-generated summary** — concise overview of what the source covers
+- **Key topics** — extracted themes and subjects
+- **Suggested questions** — ready-to-ask questions grounded in the source's content
+- Generated on first open and cached; one-click regeneration available
+
+### 19. URL / YouTube / Paste-Text Sources
+
+Beyond local file imports, you can now ingest content from multiple source types:
+
+- **URL import** — fetch and ingest any web page via the built-in reader
+- **YouTube import** — extract transcript from a YouTube video URL and ingest as a source
+- **Paste text** — paste raw text directly into the source panel for immediate ingest
+- All three types go through the same two-step chain-of-thought ingest pipeline
+
+### 20. Grounded Chat with Scope Filter
+
+Not in the original. The chat panel now supports **source-scoped queries**:
+
+- **Scope selector** — pin the query to one or more specific sources instead of the full wiki
+- **Grounded responses** — LLM answers are anchored to the selected sources, reducing hallucination
+- **Follow-up suggestions** — AI automatically generates contextually relevant follow-up questions after each response
+- Scope selection persists across messages in the same conversation
+
+### 21. Audio Overview (NotebookLM-style)
+
+Not in the original. Transforms your knowledge base into a **dual-host podcast**:
+
+- **Script generation** — LLM writes a natural two-host dialogue covering selected sources, with configurable scope and tone
+- **TTS synthesis** — synthesizes each line with distinct voices for Host A and Host B via OpenAI TTS or any compatible endpoint
+- **Built-in audio player** — inline player with play/pause, seek bar, time display, and per-line speaker highlighting
+- **Persistent scripts** — generated scripts saved to `wiki/studio/audio/<id>/` and listed for replay
+- **TTS settings** — configure provider, API key, custom endpoint, model, voice A, voice B, and speed in Settings
+
+### 22. Other Additions
 
 - **i18n** — English + Chinese interface (react-i18next)
 - **Settings persistence** — LLM provider, API key, model, context size, language saved via Tauri Store
@@ -394,12 +435,14 @@ npm run tauri build    # Production build
 
 1. Launch the app → Create a new project (choose a template)
 2. Go to **Settings** → Configure your LLM provider (API key + model)
-3. Go to **Sources** → Import documents (PDF, DOCX, MD, etc.)
+3. Go to **Sources** → Import documents (PDF, DOCX, MD, etc.), URLs, YouTube links, or paste text
 4. Watch the **Activity Panel** — LLM automatically builds wiki pages
-5. Use **Chat** to query your knowledge base
-6. Browse the **Knowledge Graph** to see connections
-7. Check **Review** for items needing your attention
-8. Run **Lint** periodically to maintain wiki health
+5. Open a source's **Source Guide** to get an instant summary, key topics, and suggested questions
+6. Use **Chat** to query your knowledge base (optionally scope to specific sources)
+7. Click 🎧 in the Sources panel to generate an **Audio Overview** podcast of your knowledge base
+8. Browse the **Knowledge Graph** to see connections
+9. Check **Review** for items needing your attention
+10. Run **Lint** periodically to maintain wiki health
 
 ## Project Structure
 
@@ -419,7 +462,9 @@ my-wiki/
 │   ├── sources/            # Source summaries
 │   ├── queries/            # Saved chat answers + research
 │   ├── synthesis/          # Cross-source analysis
-│   └── comparisons/        # Side-by-side comparisons
+│   ├── comparisons/        # Side-by-side comparisons
+│   └── studio/
+│       └── audio/          # Generated Audio Overview scripts
 ├── .obsidian/              # Obsidian vault config (auto-generated)
 └── .llm-wiki/              # App config, chat history, review items
 ```

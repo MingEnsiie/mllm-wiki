@@ -195,7 +195,12 @@ export async function saveTtsConfig(config: TtsConfig): Promise<void> {
 
 export async function loadTtsConfig(): Promise<TtsConfig | null> {
   const store = await getStore()
-  return (await store.get<TtsConfig>(TTS_CONFIG_KEY)) ?? null
+  const stored = await store.get<Partial<TtsConfig>>(TTS_CONFIG_KEY)
+  if (!stored) return null
+  // Merge with DEFAULT_TTS_CONFIG so new fields added after first save
+  // are always present (avoids undefined on old persisted configs).
+  const { DEFAULT_TTS_CONFIG } = await import("@/lib/tts-providers")
+  return { ...DEFAULT_TTS_CONFIG, ...stored }
 }
 
 // ── Update-check persistence ──────────────────────────────────────────────

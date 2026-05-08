@@ -1,6 +1,6 @@
 import type { CustomApiMode } from "./llm-presets"
 import type { ReasoningConfig } from "@/stores/wiki-store"
-import type { TtsProvider, OpenAiVoice } from "@/lib/tts-providers"
+import type { TtsProvider } from "@/lib/tts-providers"
 
 /**
  * Shape of the draft state each section reads from and writes into.
@@ -55,9 +55,10 @@ export interface SettingsDraft {
   ttsProvider: TtsProvider
   ttsApiKey: string
   ttsCustomEndpoint: string
+  ttsCustomSpeechUrl: string
   ttsModel: string
-  ttsVoiceA: OpenAiVoice
-  ttsVoiceB: OpenAiVoice
+  ttsVoiceA: string
+  ttsVoiceB: string
   ttsSpeed: number
 
   // UI

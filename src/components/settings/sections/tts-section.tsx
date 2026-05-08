@@ -4,7 +4,7 @@
 
 import { useTranslation } from "react-i18next"
 import type { SettingsDraft, DraftSetter } from "../settings-types"
-import { OPENAI_VOICES, type OpenAiVoice } from "@/lib/tts-providers"
+import { OPENAI_VOICES, MIMO_VOICES } from "@/lib/tts-providers"
 
 interface Props {
   draft: SettingsDraft
@@ -52,6 +52,22 @@ export function TtsSection({ draft, setDraft }: Props) {
           <option value="openai">{t("settings.sections.tts.providerOpenai", "OpenAI TTS")}</option>
           <option value="custom">{t("settings.sections.tts.providerCustom", "自定义兼容端点")}</option>
         </select>
+        {/* MiMo 快速填入 */}
+        {draft.ttsProvider === "custom" && (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft("ttsCustomSpeechUrl", "")
+              setDraft("ttsCustomEndpoint", "https://token-plan-cn.xiaomimimo.com/v1")
+              setDraft("ttsModel", "mimo-v2.5-tts")
+              setDraft("ttsVoiceA", "茉莉")
+              setDraft("ttsVoiceB", "白桦")
+            }}
+            className="mt-1.5 text-xs text-primary hover:underline text-left"
+          >
+            ⚡ 一键填入 MiMo-V2.5-TTS 配置
+          </button>
+        )}
       </FieldRow>
 
       {draft.ttsProvider !== "none" && (
@@ -76,18 +92,32 @@ export function TtsSection({ draft, setDraft }: Props) {
 
           {/* 自定义端点 */}
           {draft.ttsProvider === "custom" && (
-            <FieldRow
-              label={t("settings.sections.tts.customEndpoint", "自定义端点")}
-              hint={t("settings.sections.tts.customEndpointHint", "OpenAI 兼容的 /v1 根地址，例如 http://localhost:8000/v1")}
-            >
-              <input
-                type="text"
-                value={draft.ttsCustomEndpoint}
-                onChange={(e) => setDraft("ttsCustomEndpoint", e.target.value)}
-                placeholder="http://localhost:8000/v1"
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </FieldRow>
+            <>
+              <FieldRow
+                label={t("settings.sections.tts.customEndpoint", "自定义端点")}
+                hint={t("settings.sections.tts.customEndpointHint", "OpenAI 兼容的 /v1 根地址，例如 http://localhost:8000/v1")}
+              >
+                <input
+                  type="text"
+                  value={draft.ttsCustomEndpoint}
+                  onChange={(e) => setDraft("ttsCustomEndpoint", e.target.value)}
+                  placeholder="http://localhost:8000/v1"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </FieldRow>
+              <FieldRow
+                label={t("settings.sections.tts.customSpeechUrl", "语音合成完整 URL（可选）")}
+                hint={t("settings.sections.tts.customSpeechUrlHint", "留空则自动拼接 端点/audio/speech。如果服务商路径不同（如 MiMo）请填完整 URL")}
+              >
+                <input
+                  type="text"
+                  value={draft.ttsCustomSpeechUrl}
+                  onChange={(e) => setDraft("ttsCustomSpeechUrl", e.target.value)}
+                  placeholder="https://api.xiaomimimo.com/v1/audio/speech"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </FieldRow>
+            </>
           )}
 
           {/* 模型 */}
@@ -121,27 +151,91 @@ export function TtsSection({ draft, setDraft }: Props) {
 
           {/* 音色选择 */}
           <div className="grid grid-cols-2 gap-4">
-            <FieldRow label={t("settings.sections.tts.voiceA", "主持人 A 音色")}>
-              <select
-                value={draft.ttsVoiceA}
-                onChange={(e) => setDraft("ttsVoiceA", e.target.value as OpenAiVoice)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {OPENAI_VOICES.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
+            <FieldRow
+              label={t("settings.sections.tts.voiceA", "主持人 A 音色")}
+              hint={draft.ttsProvider === "custom" ? t("settings.sections.tts.voiceCustomHint", "可填音色 ID，或从预设中选择") : undefined}
+            >
+              {draft.ttsProvider === "openai" ? (
+                <select
+                  value={draft.ttsVoiceA}
+                  onChange={(e) => setDraft("ttsVoiceA", e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {OPENAI_VOICES.map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    type="text"
+                    value={draft.ttsVoiceA}
+                    onChange={(e) => setDraft("ttsVoiceA", e.target.value)}
+                    placeholder="zh_female_shuangkuaisisi_moon_bigtts"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <select
+                    value=""
+                    onChange={(e) => { if (e.target.value) setDraft("ttsVoiceA", e.target.value) }}
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-muted-foreground"
+                  >
+                    <option value="">— MiMo 预设音色 —</option>
+                    <optgroup label="中文">
+                      {MIMO_VOICES.filter(v => v.lang === "zh").map((v) => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="English">
+                      {MIMO_VOICES.filter(v => v.lang === "en").map((v) => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              )}
             </FieldRow>
-            <FieldRow label={t("settings.sections.tts.voiceB", "主持人 B 音色")}>
-              <select
-                value={draft.ttsVoiceB}
-                onChange={(e) => setDraft("ttsVoiceB", e.target.value as OpenAiVoice)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {OPENAI_VOICES.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
+            <FieldRow
+              label={t("settings.sections.tts.voiceB", "主持人 B 音色")}
+              hint={draft.ttsProvider === "custom" ? t("settings.sections.tts.voiceCustomHint", "可填音色 ID，或从预设中选择") : undefined}
+            >
+              {draft.ttsProvider === "openai" ? (
+                <select
+                  value={draft.ttsVoiceB}
+                  onChange={(e) => setDraft("ttsVoiceB", e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {OPENAI_VOICES.map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    type="text"
+                    value={draft.ttsVoiceB}
+                    onChange={(e) => setDraft("ttsVoiceB", e.target.value)}
+                    placeholder="zh_male_shaonianzixin_moon_bigtts"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <select
+                    value=""
+                    onChange={(e) => { if (e.target.value) setDraft("ttsVoiceB", e.target.value) }}
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-muted-foreground"
+                  >
+                    <option value="">— MiMo 预设音色 —</option>
+                    <optgroup label="中文">
+                      {MIMO_VOICES.filter(v => v.lang === "zh").map((v) => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="English">
+                      {MIMO_VOICES.filter(v => v.lang === "en").map((v) => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              )}
             </FieldRow>
           </div>
 
