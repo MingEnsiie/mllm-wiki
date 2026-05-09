@@ -10,6 +10,7 @@
     "graph": "Graph",
     "lint": "Lint",
     "review": "Review",
+    "paperqa": "Paper Q&A",
     "settings": "Settings",
     "switchProject": "Switch Project",
     "updateAvailable": "Update available",
